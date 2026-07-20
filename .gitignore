@@ -1,0 +1,34 @@
+node_modules
+dist
+build
+target
+.DS_Store
+*.log
+.turbo
+.env
+.env.local
+.env.*.local
+.vscode
+.idea
+*.swp
+*.swo
+coverage
+
+# Tauri build outputs (path-agnostic; matches apps/desktop/src-tauri/target too)
+src-tauri/target
+src-tauri/gen
+
+# Agent / dev-tool scratch state
+.aider*
+.omo/
+
+# Local development notes that should not ship
+OPENCODE_HANDOFF.md
+DEBUG_PROMPT.md
+docs/superpowers/
+
+# Local release artifacts (README links to GitHub Releases instead)
+outputs/
+
+# Per-session scratch work
+work/

@@ -1,0 +1,14 @@
+export { Sidebar } from "./Sidebar";
+export { TopBar } from "./TopBar";
+export { ChatArea } from "./ChatArea";
+export { InputBar } from "./InputBar";
+export { WorkspacePanel } from "./WorkspacePanel";
+export { SettingsPage } from "./SettingsPage";
+export { PluginsPanel } from "./PluginsPanel";
+export { ScheduledPanel } from "./ScheduledPanel";
+export { OnboardingPage } from "./OnboardingPage";
+export type { OnboardingStage } from "./onboarding-flow";
+export { Button } from "./components/Button";
+export { ModelBadge } from "./components/ModelBadge";
+export { ToolCallCard } from "./components/ToolCallCard";
+export { cn } from "./lib/utils";

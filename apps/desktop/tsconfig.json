@@ -1,0 +1,18 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@grok-gui/ui": ["../../packages/ui/src"],
+      "@grok-gui/ui/*": ["../../packages/ui/src/*"],
+      "@grok-gui/core": ["../../packages/core/src"],
+      "@grok-gui/core/*": ["../../packages/core/src/*"],
+      "@grok-gui/provider": ["../../packages/provider/src"],
+      "@grok-gui/provider/*": ["../../packages/provider/src/*"]
+    },
+    "types": ["vite/client"]
+  },
+  "include": ["src", "src/**/*.tsx", "src/**/*.ts"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}

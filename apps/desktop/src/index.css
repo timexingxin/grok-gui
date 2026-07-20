@@ -1,0 +1,140 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .button-primary {
+    @apply rounded-lg bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .button-secondary {
+    @apply rounded-lg border border-border px-3 py-1.5 text-xs text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50;
+  }
+
+  .field {
+    @apply w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground outline-none transition-colors placeholder:text-muted-foreground focus:border-foreground/40;
+  }
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 5% 64.9%;
+    --sidebar: 240 5% 96.5%;
+    --sidebar-foreground: 240 5.9% 16%;
+    --sidebar-muted: 240 3.8% 46.1%;
+    --sidebar-border: 240 5.9% 90%;
+    --sidebar-active: 240 5.9% 91%;
+    --radius: 0.75rem;
+    --brand: #3b82f6;
+    --brand-foreground: #ffffff;
+  }
+
+  .dark {
+    --background: 240 6% 8%;
+    --foreground: 0 0% 96%;
+    --card: 240 6% 9.5%;
+    --card-foreground: 0 0% 96%;
+    --popover: 240 6% 11%;
+    --popover-foreground: 0 0% 96%;
+    --primary: 0 0% 96%;
+    --primary-foreground: 240 5.9% 10%;
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 96%;
+    --muted: 240 3.7% 15.9%;
+    --muted-foreground: 240 5% 64.9%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 96%;
+    --destructive: 0 62.8% 50.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 3.7% 16.5%;
+    --input: 240 3.7% 16.5%;
+    --ring: 240 4.9% 83.9%;
+    --sidebar: 240 7% 5.5%;
+    --sidebar-foreground: 240 5% 85%;
+    --sidebar-muted: 240 5% 55%;
+    --sidebar-border: 240 3.7% 14%;
+    --sidebar-active: 240 4% 13%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body, #root {
+    @apply h-full;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    font-size: var(--font-size-base, 13px);
+  }
+}
+
+/* Custom scrollbar (subtle, like OpenCode/Codex) */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Streaming text caret */
+.streaming-caret::after {
+  content: "▍";
+  display: inline-block;
+  color: hsl(var(--muted-foreground));
+  animation: blink 1s steps(1) infinite;
+  margin-left: 1px;
+}
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* Typing indicator dots */
+.typing-dot {
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+.typing-dot:nth-child(2) { animation-delay: 0.15s; }
+.typing-dot:nth-child(3) { animation-delay: 0.3s; }
+@keyframes typing-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+  30% { transform: translateY(-3px); opacity: 1; }
+}
+
+/* Markdown content polish */
+.prose pre {
+  @apply overflow-x-auto rounded-lg text-[12px] leading-relaxed;
+}
+.prose code {
+  @apply rounded bg-secondary px-1 py-0.5 font-mono text-[0.9em];
+}
+.prose pre code {
+  @apply bg-transparent p-0;
+}
