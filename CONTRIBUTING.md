@@ -16,7 +16,7 @@ Prerequisites:
 Clone and install:
 
 ```bash
-git clone https://github.com/OWNER/REPO.git grok-gui
+git clone https://github.com/timexingxin/grok-gui.git grok-gui
 cd grok-gui
 npm install
 ```

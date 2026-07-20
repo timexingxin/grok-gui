@@ -4,7 +4,7 @@ A cross-platform desktop GUI for [Grok Build](https://github.com/xai-org/grok-bu
 
 > **Status: working ACP client.** Talks to a real `grok agent stdio` child process over JSON-RPC 2.0: live streaming, tool-call cards, plan view, permission levels, workspace workbench, transcripts, and a light/dark Codex-style UI.
 
-[![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/ci.yml)
+[![CI](https://github.com/timexingxin/grok-gui/actions/workflows/ci.yml/badge.svg)](https://github.com/timexingxin/grok-gui/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](./LICENSE)
 [![Tauri 2](https://img.shields.io/badge/Tauri-2.x-24C8DB?logo=tauri)](https://tauri.app)
 
@@ -153,11 +153,12 @@ In-app: Settings → 常规 → 应用更新 → 检查更新.
 3. **xAI does not accept external PRs** to `grok-build`. This GUI is
    the layer where you can iterate freely. If upstream deletes the repo,
    Apache-2.0 still gives you the right to fork.
-4. **Auto-update is not configured for this repo** — the `plugins.updater.endpoints`
-   in `tauri.conf.json` contains a `GROK_GUI_OWNER/GROK_GUI_REPO`
-   placeholder. Replace it with your real `latest.json` URL after
-   publishing, and set `TAURI_SIGNING_PRIVATE_KEY` in the build env to
-   produce signed updates.
+4. **Auto-update endpoint points at this repo but is not yet signed** —
+   `plugins.updater.endpoints` in `tauri.conf.json` now resolves to
+   `timexingxin/grok-gui`, but no `latest.json` is published and no
+   `TAURI_SIGNING_PRIVATE_KEY` is set in the build env, so "Check for
+   updates" will report no update available until you generate a minisign
+   keypair and attach `latest.json` + `*.sig` to a release.
 
 ## Contributing
 
