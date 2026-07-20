@@ -1184,7 +1184,7 @@ pub fn run() {
 #[cfg(test)]
 mod session_pool_tests {
     use super::{lru_oldest, SessionPool};
-use std::collections::{HashMap, HashSet};
+    use std::collections::HashMap;
     use std::time::{Duration, Instant};
 
     #[test]
