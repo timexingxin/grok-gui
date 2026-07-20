@@ -39,12 +39,21 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     steps:
       - uses: actions/checkout@v4
+      - name: Install Linux system deps (Tauri + keyring secret-service)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libglib2.0-dev libdbus-1-dev libgtk-3-dev \
+            libwebkit2gtk-4.1-dev libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev libappindicator3-dev \
+            librsvg2-dev pkg-config
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri -> target
       - run: cd apps/desktop/src-tauri && cargo test
-      - run: cd apps/desktop/src-tauri && cargo clippy -- -D warnings --all-targets
+      - run: cd apps/desktop/src-tauri && cargo clippy --all-targets -- -D warnings
 
   rust-build-macos:
     name: Tauri bundle (macOS)
