@@ -1,0 +1,82 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  frontend:
+    name: Frontend (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
+      - name: Upload desktop dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-dist-node-${{ matrix.node }}
+          path: apps/desktop/dist
+
+  rust-lint:
+    name: Rust lint & test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+      - run: cd apps/desktop/src-tauri && cargo test
+      - run: cd apps/desktop/src-tauri && cargo clippy -- -D warnings --all-targets
+
+  rust-build-macos:
+    name: Tauri bundle (macOS)
+    runs-on: macos-latest
+    needs: [frontend, rust-lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+      - run: npm ci
+      - run: npm run build
+      - run: cd apps/desktop/src-tauri && cargo build --release
+      - name: Sign with ad-hoc identity
+        run: |
+          codesign --force --deep --sign - \
+            apps/desktop/src-tauri/target/release/bundle/macos/Grok\ GUI.app
+      - name: Build DMG
+        run: |
+          # Tauri's `tauri build` already produces the .dmg via the
+          # bundle target; this step is a no-op marker for the artifact.
+          ls -la "apps/desktop/src-tauri/target/release/bundle/dmg/"
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: grok-gui-macos
+          path: apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
+
+  # Tauri bundle on Linux requires a long list of apt packages; we
+  # keep the test+clippy matrix above and skip the build for now.
