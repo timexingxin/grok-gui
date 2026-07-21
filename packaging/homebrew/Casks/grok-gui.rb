@@ -15,7 +15,7 @@ cask "grok-gui" do
     strategy :github_latest_release
   end
 
-  depends_on macos: ">= :big_sur"
+  depends_on macos: :big_sur
 
   app "Grok GUI.app"
 
