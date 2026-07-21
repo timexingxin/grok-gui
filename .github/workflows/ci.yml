@@ -89,5 +89,47 @@ jobs:
           name: grok-gui-macos
           path: apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg
 
+  electron-build-macos:
+    name: Electron bundle (macOS)
+    runs-on: macos-latest
+    needs: [frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: electron-version/package-lock.json
+      - name: Install Electron deps
+        working-directory: electron-version
+        run: npm ci
+      - name: Build Electron app + DMG
+        working-directory: electron-version
+        run: npm run dist
+      - name: Verify ad-hoc signature (post afterSign hook)
+        # electron-builder.yml wires scripts/afterSign.js into mac.afterSign
+        # so the .app inside the DMG is re-signed with `codesign --force
+        # --deep --sign -` before DMG packaging. This step is a hard gate:
+        # if the signature is still malformed (e.g. hook regression),
+        # fail the build.
+        run: |
+          set -e
+          APP=$(ls -d "electron-version/release/mac"*/"Grok GUI.app" 2>/dev/null | head -n1 || true)
+          if [ -z "$APP" ]; then
+            APP=$(ls -d "electron-version/release/mac-arm64/Grok GUI.app" "electron-version/release/mac/Grok GUI.app" 2>/dev/null | head -n1 || true)
+          fi
+          if [ -z "$APP" ]; then
+            echo "::error::Could not find Grok GUI.app under electron-version/release/"
+            ls -la electron-version/release/ || true
+            exit 1
+          fi
+          echo "Verifying: $APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+      - name: Upload DMGs
+        uses: actions/upload-artifact@v4
+        with:
+          name: grok-gui-electron-macos
+          path: electron-version/release/*.dmg
+
   # Tauri bundle on Linux requires a long list of apt packages; we
   # keep the test+clippy matrix above and skip the build for now.

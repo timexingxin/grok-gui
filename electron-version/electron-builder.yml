@@ -16,6 +16,12 @@ mac:
     - target: dmg
       arch: [x64, arm64]
   minimumSystemVersion: "12.0"
+  # Re-sign the .app with an ad-hoc identity *before* electron-builder packs
+  # the DMG. The placeholder linker-signed Electron signature fails
+  # macOS 15 Sequoia Gatekeeper with
+  #   "code has no resources but signature indicates they must be present"
+  # See scripts/afterSign.js for the full rationale.
+  afterSign: scripts/afterSign.js
 dmg:
   window:
     width: 660
