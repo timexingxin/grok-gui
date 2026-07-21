@@ -105,7 +105,11 @@ jobs:
         run: npm ci
       - name: Build Electron app + DMG
         working-directory: electron-version
-        run: npm run dist
+        # `--publish never` disables electron-builder's auto-publish-to-
+        # GitHub-Releases trigger (it fires on CI=true with no GH_TOKEN,
+        # which fails the build). We only want to build + bundle here;
+        # release upload is done separately.
+        run: npm run dist -- --publish never
       - name: Verify ad-hoc signature (post afterSign hook)
         # electron-builder.yml wires scripts/afterSign.js into mac.afterSign
         # so the .app inside the DMG is re-signed with `codesign --force
