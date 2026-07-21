@@ -219,6 +219,7 @@ interface StartSessionArgs {
   reasoningEffort?: string | null;
   executionMode: string;
   resumeSessionId?: string | null;
+  locale?: string | null;
 }
 
 interface StartSessionResponse {
@@ -269,6 +270,7 @@ async function startSession(args: StartSessionArgs): Promise<StartSessionRespons
     executionMode: args.executionMode,
     mcpServers: await configuredMcpServers(expanded),
     resumeSessionId: args.resumeSessionId,
+    locale: args.locale,
   };
 
   let runtime: GrokRuntime;

@@ -71,6 +71,10 @@ export interface SessionOptions {
   executionMode: string;
   mcpServers: unknown[];
   resumeSessionId?: string | null;
+  /** BCP-47 UI locale (e.g. "en-US", "zh-CN"). Inherited by the spawned
+   * `grok agent stdio` child via `LANG`/`LC_ALL` so the agent speaks the UI
+   * language instead of inheriting the host's system locale. */
+  locale?: string | null;
 }
 
 /** Minimal async mutex: `tokio::sync::Mutex` has no lock-free JS equivalent,
@@ -171,6 +175,11 @@ export class GrokRuntime {
     const env = { ...process.env };
     const apiKey = getApiKey();
     if (apiKey) env.XAI_API_KEY = apiKey;
+    const localeValue = localeEnvValue(options.locale ?? undefined);
+    if (localeValue) {
+      env.LANG = localeValue;
+      env.LC_ALL = localeValue;
+    }
 
     const child = spawn(grokBin, args, { env, stdio: ["pipe", "pipe", "pipe"] });
 
@@ -790,6 +799,23 @@ export function modeCode(mode: string): number {
 
 export function modeGrantsFullAccess(mode: string): boolean {
   return modeCode(mode) === MODE_BUILD;
+}
+
+function localeEnvValue(locale: string | undefined): string | undefined {
+  if (!locale) return undefined;
+  const posix = (() => {
+    switch (locale) {
+      case "en-US":
+      case "en":
+        return "en_US.UTF-8";
+      case "zh-CN":
+      case "zh":
+        return "zh_CN.UTF-8";
+      default:
+        return locale.includes("-") ? locale.replace("-", "_") : locale;
+    }
+  })();
+  return `${posix}.UTF-8`;
 }
 
 /** These are Grok Build's documented process-start policy controls. Sandbox
