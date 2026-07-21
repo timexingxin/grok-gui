@@ -513,6 +513,12 @@ async fn ping(state: tauri::State<'_, AppState>) -> Result<PingResponse, String>
     })
 }
 
+// Tauri commands mirror the IPC payload from the frontend, so the
+// argument list grows alongside the new fields we plumb through
+// (recently `locale`). Lifting them into a struct would be cleaner but
+// would also change the wire format and require matching edits on the
+// store/frontend side, so for now we just suppress the lint.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 async fn start_session(
     state: tauri::State<'_, AppState>,
