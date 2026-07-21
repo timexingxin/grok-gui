@@ -2,8 +2,8 @@
 
 cask "grok-gui" do
   version "0.1.0"
-  sha256 arm:   "190ed74c269af285fecce30ac9f3d1d183ccb1cc5748f1439bbe25590a74af40",
-         intel: "386fbdbf947c390dc5fe6c7544c2b755add98b38ec1c33854cbbaa1a1b1a5f7d"
+  sha256 arm:   "9d10376d024a0a6c3feb475d9d77590ec38acb7ee93cfff9f502beb34e4f7b96",
+         intel: "82d573206cebb7dfbc96d8bbcd874a19a3b0db8a01ffac37a00d114e7ceedc27"
 
   url "https://github.com/timexingxin/grok-gui/releases/download/v#{version}/Grok-GUI-#{version}-Electron-#{arch}.dmg"
   name "Grok GUI"
