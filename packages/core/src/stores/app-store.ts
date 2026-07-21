@@ -20,6 +20,7 @@ import type {
   PermissionLevel,
   ScheduledTask,
   UiSettings,
+  UiLanguage,
   QueuedMessage,
 } from "../types";
 import { modeForLevel } from "../types";
@@ -118,7 +119,7 @@ export interface AppState {
   refreshAuthMode: () => Promise<void>;
   setAuthMode: (mode: "oauth" | "apiKey") => Promise<void>;
   setActiveModel: (providerId: string, modelId: string) => Promise<void>;
-  startSession: (workspace: string, resumeSessionId?: string) => Promise<void>;
+  startSession: (workspace: string, resumeSessionId?: string, language?: UiLanguage) => Promise<void>;
   /** Start a clean agent conversation in the current or selected workspace. */
   newTask: (workspace?: string) => Promise<void>;
   sendMessage: (text: string) => Promise<void>;
@@ -535,7 +536,7 @@ export const useAppStore = create<AppState>()(
       set({ activeModel: { providerId, id: modelId, label: m.label, contextWindow: modelContextWindow(m) } });
     },
 
-    startSession: async (workspace, resumeSessionId) => {
+    startSession: async (workspace, resumeSessionId, language) => {
       if (isTauri()) {
         set({ connection: { state: "connecting" } });
         const tauri = await import("@tauri-apps/api/core");
@@ -558,6 +559,11 @@ export const useAppStore = create<AppState>()(
                 : null,
               resumeSessionId,
               executionMode: get().mode,
+              // Forward the UI locale so the agent runtime speaks the same
+              // language as the UI; without this the agent falls back to
+              // the host's LANG and replies in Chinese on zh_CN systems
+              // even when the picker shows English.
+              locale: language ?? get().settings.language,
             },
           );
           const realWorkspace = resp.workspace;

@@ -138,6 +138,10 @@ pub struct SessionOptions {
     pub execution_mode: String,
     pub mcp_servers: Vec<Value>,
     pub resume_session_id: Option<String>,
+    /// BCP-47 UI locale (e.g. "en-US", "zh-CN"). Spawned with `LANG`/`LC_ALL`
+    /// env so the agent picks the matching language instead of inheriting
+    /// the system locale.
+    pub locale: Option<String>,
 }
 
 impl GrokRuntime {
@@ -168,6 +172,15 @@ impl GrokRuntime {
         let mut cmd = Command::new(&grok_bin);
         if let Some(api_key) = crate::api_key_for_runtime().map_err(|error| anyhow!(error))? {
             cmd.env("XAI_API_KEY", api_key);
+        }
+        if let Some(lang_value) = locale_env_value(options.locale.as_deref()) {
+            // Both LANG (the de-facto standard) and LC_ALL (the override) are
+            // set so the agent runtime — and any sub-process it spawns for
+            // tool execution — pick the UI's language rather than the host
+            // system locale. Without this, switching the UI to English on a
+            // Chinese system leaves the agent replying in Chinese.
+            cmd.env("LANG", &lang_value);
+            cmd.env("LC_ALL", &lang_value);
         }
         for arg in launch_policy_args(&options.execution_mode)? {
             cmd.arg(arg);
@@ -1312,6 +1325,21 @@ fn launch_policy_args(mode: &str) -> Result<Vec<&'static str>> {
         ]),
         _ => Err(anyhow!("unknown execution mode: {}", mode)),
     }
+}
+
+/// Map the UI's BCP-47 tag (e.g. "en-US", "zh-CN") to a POSIX `LANG` value
+/// the spawned child process understands. Falls through to a generic
+/// tag-to-locale conversion for anything we don't know explicitly so a
+/// future `fr-FR` picker just works.
+fn locale_env_value(locale: Option<&str>) -> Option<String> {
+    let tag = locale?;
+    let posix = match tag {
+        "en-US" | "en" => "en_US.UTF-8".to_string(),
+        "zh-CN" | "zh" => "zh_CN.UTF-8".to_string(),
+        other if other.contains('-') => other.replacen('-', "_", 1),
+        other => other.to_string(),
+    };
+    Some(format!("{}.UTF-8", posix))
 }
 
 #[cfg(test)]

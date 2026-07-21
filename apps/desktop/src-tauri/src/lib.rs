@@ -522,6 +522,7 @@ async fn start_session(
     reasoning_effort: Option<String>,
     execution_mode: String,
     resume_session_id: Option<String>,
+    locale: Option<String>,
 ) -> Result<StartSessionResponse, String> {
     let expanded = expand_tilde(&workspace_path);
     info!(
@@ -591,6 +592,7 @@ async fn start_session(
             execution_mode,
             mcp_servers: configured_mcp_servers(&expanded).await,
             resume_session_id: resume_session_id.clone(),
+            locale,
         },
         Box::new(move |evt: GrokEvent| {
             if let Some(app) = APP_HANDLE.get() {

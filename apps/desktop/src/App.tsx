@@ -99,8 +99,9 @@ export default function App() {
         await useAppStore.getState().openConversation(deepLinked);
       } else {
         const workspace = useAppStore.getState().settings.defaultWorkspace || "~";
+        const language = useAppStore.getState().settings.language;
         try {
-          await useAppStore.getState().startSession(workspace);
+          await useAppStore.getState().startSession(workspace, undefined, language);
         } catch (startErr) {
           console.warn("Failed to start session, checking CLI again:", startErr);
           if (isTauri) {
