@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Check, Copy, Globe, KeyRound, RefreshCw, ShieldCheck, TerminalSquare } from "lucide-react";
 import type { OnboardingStage } from "./onboarding-flow";
 import { useAppStore } from "@grok-gui/core";
+import appIconUrl from "./assets/grok-gui-cover.png";
 
 const INSTALL_COMMAND = "curl -fsSL https://x.ai/cli/install.sh | bash";
 
@@ -66,13 +67,13 @@ export function OnboardingPage({
   return (
     <div className="flex h-full w-full items-center justify-center bg-background p-8">
       <div className="flex w-full max-w-md flex-col items-center text-center">
-        <img src="/grok-gui-cover.png" alt="Grok GUI" className="h-16 w-16 rounded-2xl object-cover" />
+        <img src={appIconUrl} alt={__APP_NAME__} className="h-16 w-16 rounded-2xl object-cover" />
         <h1 className="mt-5 text-xl font-semibold tracking-tight text-foreground">
-          {english ? "Welcome to Grok GUI" : "欢迎使用 Grok GUI"}
+          {english ? `Welcome to ${__APP_NAME__}` : `欢迎使用 ${__APP_NAME__}`}
         </h1>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           {stage === "missing-cli"
-            ? <>{english ? "Grok GUI needs the official Grok Build CLI. Installing runs the official xAI installer." : "Grok GUI 需要官方 Grok Build CLI。点击安装后会运行 xAI 官方安装器。"}</>
+            ? <>{english ? `${__APP_NAME__} needs the official Grok Build CLI. Installing runs the official xAI installer.` : `${__APP_NAME__} 需要官方 Grok Build CLI。点击安装后会运行 xAI 官方安装器。`}</>
             : <>{english ? "Grok Build is installed. Sign in with Grok or use your xAI API key." : "Grok Build 已安装。请用官方 Grok 登录，或使用你的 xAI API Key。"}</>}
         </p>
 
@@ -92,7 +93,7 @@ export function OnboardingPage({
             <button type="button" onClick={() => void run("oauth", onOAuthLogin)} disabled={!!working} className="flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-3 py-2.5 text-[13px] font-medium text-brand-foreground disabled:opacity-60">
               <Globe size={14} /> {working === "oauth" ? (english ? "Waiting for browser authorization…" : "等待浏览器授权…") : (english ? "Sign in with Grok" : "使用 Grok 账号登录")}
             </button>
-            <p className="mt-2 text-center text-[10px] text-muted-foreground">{english ? "Official Grok Build opens the browser sign-in page; Grok GUI never handles your password." : "将由官方 Grok Build 打开浏览器登录页；Grok GUI 不接触密码。"}</p>
+            <p className="mt-2 text-center text-[10px] text-muted-foreground">{english ? `Official Grok Build opens the browser sign-in page; ${__APP_NAME__} never handles your password.` : `将由官方 Grok Build 打开浏览器登录页；${__APP_NAME__} 不接触密码。`}</p>
             <button type="button" onClick={() => setShowApiKey((value) => !value)} disabled={!!working} className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-border px-3 py-2 text-[12px] font-medium text-foreground hover:bg-secondary disabled:opacity-60">
               <KeyRound size={13} /> {english ? "Use an xAI API key" : "使用 xAI API Key"}
             </button>

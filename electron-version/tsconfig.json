@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "strict": true,
+    "noEmit": true,
+    "noUnusedLocals": false,
+    "noUnusedParameters": false,
+    "noFallthroughCasesInSwitch": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "verbatimModuleSyntax": false,
+    "baseUrl": ".",
+    "types": ["vite/client", "node"],
+    "paths": {
+      "@/*": ["src/*"],
+      "@grok-gui/ui": ["packages/ui/src"],
+      "@grok-gui/ui/*": ["packages/ui/src/*"],
+      "@grok-gui/core": ["packages/core/src"],
+      "@grok-gui/core/*": ["packages/core/src/*"],
+      "@grok-gui/provider": ["packages/provider/src"],
+      "@grok-gui/provider/*": ["packages/provider/src/*"],
+      "@tauri-apps/api/core": ["src/shims/tauri-core.ts"],
+      "@tauri-apps/api/event": ["src/shims/tauri-event.ts"],
+      "@tauri-apps/plugin-dialog": ["src/shims/plugin-dialog.ts"],
+      "@tauri-apps/plugin-updater": ["src/shims/plugin-updater.ts"]
+    }
+  },
+  "include": ["src", "electron", "packages"],
+  "exclude": ["node_modules", "out", "dist", "release"]
+}

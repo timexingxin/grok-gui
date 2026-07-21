@@ -15,6 +15,7 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { imagePreviewUrl } from "./image-preview";
 import { ImageLightbox } from "./ImageLightbox";
 import { t } from "./i18n";
+import appIconUrl from "./assets/grok-gui-cover.png";
 
 export function ChatArea() {
   const messages = useAppStore((s) => s.messages);
@@ -108,7 +109,7 @@ function EmptyState() {
   return (
     <div className="flex flex-1 items-center justify-center overflow-y-auto px-6 py-8">
       <div className="flex w-full max-w-2xl flex-col items-center">
-        <img src="/grok-gui-cover.png" alt="Grok GUI" className="h-14 w-14 rounded-2xl object-cover" />
+        <img src={appIconUrl} alt={__APP_NAME__} className="h-14 w-14 rounded-2xl object-cover" />
         <h2 className="mt-4 text-xl font-semibold tracking-tight">{tr("buildWhat")}</h2>
         <p className="mt-2 max-w-md text-center text-sm leading-relaxed text-muted-foreground">
           {tr("buildPrompt")}

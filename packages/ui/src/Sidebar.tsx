@@ -12,6 +12,7 @@ import { buildSidebarSessions, splitPinnedSessions } from "./sidebar-sessions";
 import { worktreeLabel, worktreeStatus } from "./worktree-labels";
 import { contextMenuPosition } from "./context-menu-position";
 import { t } from "./i18n";
+import appIconUrl from "./assets/grok-gui-cover.png";
 
 interface ContextMenuState {
   x: number;
@@ -257,7 +258,7 @@ export function Sidebar() {
   if (collapsed) {
     return (
       <aside className="flex h-full w-12 flex-col items-center border-r border-sidebar-border bg-sidebar py-2.5">
-        <img src="/grok-gui-cover.png" alt="Grok GUI" className="h-6 w-6 rounded-md object-cover" />
+        <img src={appIconUrl} alt={__APP_NAME__} className="h-6 w-6 rounded-md object-cover" />
         <CollapsedButton title={`${tr("newTask")} (⌘N)`} onClick={startNewTask}>
           <Plus size={16} />
         </CollapsedButton>
@@ -286,8 +287,8 @@ export function Sidebar() {
     <aside className="flex h-full w-[260px] flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       {/* Brand */}
       <div className="flex items-center gap-2 px-3.5 pb-1 pt-3.5">
-        <img src="/grok-gui-cover.png" alt="Grok GUI" className="h-6 w-6 rounded-md object-cover" />
-        <h1 className="text-[13px] font-semibold tracking-tight">Grok GUI</h1>
+        <img src={appIconUrl} alt={__APP_NAME__} className="h-6 w-6 rounded-md object-cover" />
+        <h1 className="text-[13px] font-semibold tracking-tight">{__APP_NAME__}</h1>
         <button
           type="button"
           title={`${tr("collapseSidebar")} (⌘B)`}
@@ -444,7 +445,7 @@ export function Sidebar() {
         >
           <Settings size={13} /> {tr("settings")} & {tr("connection")}
         </button>
-        <p className="px-2 pt-1.5 text-[9px] text-sidebar-muted/60">Grok GUI · Grok Build agent</p>
+        <p className="px-2 pt-1.5 text-[9px] text-sidebar-muted/60">{__APP_NAME__} · Grok Build agent</p>
       </div>
 
       {ctxMenu && (() => {

@@ -1,4 +1,4 @@
-// Tauri 2 entry point for Grok GUI.
+// Tauri 2 entry point for Grok GUI Lite.
 // Architecture:
 //   Frontend (React) <-> Tauri commands/events <-> grok_runtime (ACP / stdio)
 //
@@ -31,7 +31,7 @@ use provider_config::ProviderConfig;
 
 static APP_HANDLE: OnceCell<tauri::AppHandle> = OnceCell::new();
 const OFFICIAL_INSTALLER_SCRIPT: &str = "curl -fsSL https://x.ai/cli/install.sh | bash";
-const KEYCHAIN_SERVICE: &str = "com.grok-gui.desktop";
+const KEYCHAIN_SERVICE: &str = "com.grok-gui.lite";
 const KEYCHAIN_ACCOUNT: &str = "xai-api-key";
 
 /// Maximum number of concurrent ACP runtimes kept alive in the pool. Each
@@ -1124,7 +1124,7 @@ async fn open_session_window(app: tauri::AppHandle, session_id: String) -> Resul
         .map_err(|error| format!("无法构造会话链接：{}", error))?;
     url.query_pairs_mut().append_pair("session", &session_id);
     let _ = WebviewWindowBuilder::new(&app, &label, tauri::WebviewUrl::External(url))
-        .title(format!("Grok GUI · {}", session_prefix))
+        .title(format!("Grok GUI Lite · {}", session_prefix))
         .inner_size(1100.0, 720.0)
         .build()
         .map_err(|e| format!("无法创建窗口：{}", e))?;
@@ -1174,11 +1174,11 @@ pub fn run() {
         ])
         .setup(|app| {
             let _ = APP_HANDLE.set(app.handle().clone());
-            info!("Grok GUI started (v{})", env!("CARGO_PKG_VERSION"));
+            info!("Grok GUI Lite started (v{})", env!("CARGO_PKG_VERSION"));
             Ok(())
         })
         .run(tauri::generate_context!())
-        .expect("error while running Grok GUI");
+        .expect("error while running Grok GUI Lite");
 }
 
 #[cfg(test)]

@@ -1,0 +1,11 @@
+node_modules
+out
+release
+dist
+*.dmg
+*.blockmap
+*.exe
+*.msi
+*.AppImage
+.DS_Store
+*.log

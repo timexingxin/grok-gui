@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2.0.0",
-  "productName": "Grok GUI",
+  "productName": "Grok GUI Lite",
   "version": "0.1.0",
-  "identifier": "com.grok-gui.desktop",
+  "identifier": "com.grok-gui.lite",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Grok GUI",
+        "title": "Grok GUI Lite",
         "width": 1280,
         "height": 800,
         "minWidth": 960,
@@ -55,8 +55,8 @@
       "icons/icon.ico"
     ],
     "category": "DeveloperTool",
-    "shortDescription": "Grok GUI desktop client for Grok Build",
-    "longDescription": "Grok GUI is a desktop interface for the Grok Build AI coding agent. Multi-provider, multi-model, with Code and Write modes. Inspired by OpenCode, Codex, and DeepSeek GUI.",
+    "shortDescription": "Grok GUI Lite desktop client for Grok Build",
+    "longDescription": "Grok GUI Lite is a lightweight desktop interface for the Grok Build AI coding agent. Multi-provider, multi-model, with Code and Write modes. Inspired by OpenCode, Codex, and DeepSeek GUI.",
     "macOS": {
       "minimumSystemVersion": "12.0",
       "entitlements": null,

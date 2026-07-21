@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Sidebar, TopBar, ChatArea, InputBar, WorkspacePanel, SettingsPage, PluginsPanel, ScheduledPanel, OnboardingPage } from "@grok-gui/ui";
+import { Sidebar, TopBar, ChatArea, InputBar, WorkspacePanel, SettingsPage, PluginsPanel, ScheduledPanel, OnboardingPage, appIconUrl } from "@grok-gui/ui";
 import { useAppStore } from "@grok-gui/core";
 import type { OnboardingStage } from "@grok-gui/ui";
 
@@ -150,10 +150,10 @@ export default function App() {
     return (
       <div className="flex h-full w-full items-center justify-center bg-background p-8">
         <div className="max-w-md text-center">
-          <p className="text-base font-semibold text-destructive">{english ? "Grok GUI could not start the agent" : "Grok GUI 无法启动智能体"}</p>
+          <p className="text-base font-semibold text-destructive">{english ? `${__APP_NAME__} could not start the agent` : `${__APP_NAME__} 无法启动智能体`}</p>
           <p className="mt-2 text-sm text-muted-foreground">{bootError}</p>
           <p className="mt-2 text-xs text-muted-foreground/80">
-            {english ? "Grok Build CLI was found but a session could not be started. Complete CLI sign-in and try again; Grok GUI never fakes a connection." : "已找到 Grok Build CLI，但未能建立会话。请完成 CLI 登录后重试；Grok GUI 不会伪造连接状态。"}
+            {english ? `Grok Build CLI was found but a session could not be started. Complete CLI sign-in and try again; ${__APP_NAME__} never fakes a connection.` : `已找到 Grok Build CLI，但未能建立会话。请完成 CLI 登录后重试；${__APP_NAME__} 不会伪造连接状态。`}
           </p>
           <button
             type="button"
@@ -172,7 +172,7 @@ export default function App() {
       <div className="flex h-full w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-3">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-muted border-t-foreground" />
-          <p className="text-sm text-muted-foreground">{english ? "Starting Grok GUI…" : "正在启动 Grok GUI…"}</p>
+          <p className="text-sm text-muted-foreground">{english ? `Starting ${__APP_NAME__}…` : `正在启动 ${__APP_NAME__}…`}</p>
         </div>
       </div>
     );
@@ -229,8 +229,8 @@ function LanguagePicker() {
   return (
     <div className="flex h-full w-full items-center justify-center bg-background px-6">
       <div className="flex w-full max-w-md flex-col items-center">
-        <img src="/grok-gui-cover.png" alt="Grok GUI" className="h-16 w-16 rounded-2xl object-cover" />
-        <h1 className="mt-5 text-2xl font-bold tracking-tight text-foreground">Grok GUI</h1>
+        <img src={appIconUrl} alt={__APP_NAME__} className="h-16 w-16 rounded-2xl object-cover" />
+        <h1 className="mt-5 text-2xl font-bold tracking-tight text-foreground">{__APP_NAME__}</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Choose your language / 选择你的语言
         </p>

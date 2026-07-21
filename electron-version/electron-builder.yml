@@ -1,0 +1,51 @@
+appId: com.grok-gui.desktop
+productName: Grok GUI
+copyright: Copyright © 2026 Time星沁
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+extraResources: []
+
+mac:
+  category: public.app-category.developer-tools
+  icon: build/icon.icns
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+  minimumSystemVersion: "12.0"
+dmg:
+  window:
+    width: 660
+    height: 400
+  contents:
+    - x: 180
+      y: 170
+    - x: 480
+      y: 170
+      type: link
+      path: /Applications
+
+win:
+  icon: build/icon.ico
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  installerIcon: build/icon.ico
+
+linux:
+  icon: build/icon.png
+  category: Development
+  target:
+    - target: AppImage
+      arch: [x64]
+
+publish:
+  provider: github
+  owner: timexingxin
+  repo: grok-gui

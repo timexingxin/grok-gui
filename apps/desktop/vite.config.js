@@ -7,6 +7,12 @@ const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const host = process.env.TAURI_DEV_HOST;
 export default defineConfig({
     plugins: [react()],
+    // Compile-time product name. The shared UI package reads `__APP_NAME__` so
+    // the Tauri build brands itself "Grok GUI Lite" while the Electron build
+    // (see electron-version/electron.vite.config.ts) keeps "Grok GUI".
+    define: {
+        __APP_NAME__: JSON.stringify("Grok GUI Lite"),
+    },
     // Vite options tailored for Tauri development.
     clearScreen: false,
     server: {
