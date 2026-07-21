@@ -74,8 +74,10 @@ jobs:
         working-directory: apps/desktop
       - name: Sign with ad-hoc identity
         run: |
+          # Match whatever .app tauri build emitted (productName is
+          # "Grok GUI Lite", not "Grok GUI"); a glob survives renames.
           codesign --force --deep --sign - \
-            apps/desktop/src-tauri/target/release/bundle/macos/Grok\ GUI.app
+            apps/desktop/src-tauri/target/release/bundle/macos/*.app
       - name: Build DMG
         run: |
           # Tauri's `tauri build` already produces the .dmg via the
