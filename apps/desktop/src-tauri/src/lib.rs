@@ -1012,6 +1012,32 @@ async fn workspace_diff(
 }
 
 #[tauri::command]
+async fn workspace_list_dir(
+    workspace_path: String,
+    relative_dir: String,
+) -> Result<Vec<workspace::WorkspaceDirEntry>, String> {
+    workspace::list_dir(&expand_tilde(&workspace_path), &relative_dir).map_err(|e| e.to_string())
+}
+
+/// Content search walks (and reads) every candidate file synchronously, so it
+/// runs on a blocking-pool thread rather than the async runtime — otherwise a
+/// large repo scan would stall every other webview IPC call in flight.
+#[tauri::command]
+async fn workspace_search(
+    workspace_path: String,
+    query: String,
+    max_results: usize,
+) -> Result<Vec<workspace::WorkspaceSearchMatch>, String> {
+    let workspace_path = expand_tilde(&workspace_path);
+    tauri::async_runtime::spawn_blocking(move || {
+        workspace::search_content(&workspace_path, &query, max_results)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn save_clipboard_image(
     workspace_path: Option<String>,
     filename: String,
@@ -1166,6 +1192,8 @@ pub fn run() {
             workspace_overview,
             workspace_file,
             workspace_diff,
+            workspace_list_dir,
+            workspace_search,
             show_in_finder,
             open_session_window,
             save_clipboard_image,

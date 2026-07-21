@@ -10,6 +10,7 @@ export interface ElectronBridge {
   getPathForFile(file: File): string;
   checkForUpdates(): Promise<{ available: boolean; version?: string } | null>;
   downloadAndInstallUpdate(): Promise<void>;
+  platform: string;
 }
 
 declare global {

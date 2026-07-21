@@ -2,6 +2,23 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Frameless window (hiddenInset): the native title bar is gone, so without a
+   draggable region the window cannot be moved. This transparent strip covers
+   the 38px top inset the renderer reserves (so it never overlaps interactive
+   controls). No z-index on purpose: in DOM order it sits before #root, so
+   modals/lightboxes painted later stay above it and keep their close buttons
+   clickable, while the native traffic lights live outside the webview and are
+   unaffected either way. */
+html.drag-titlebar body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 38px;
+  -webkit-app-region: drag;
+}
+
 @layer components {
   .button-primary {
     @apply rounded-lg bg-foreground px-3 py-1.5 text-xs font-medium text-background transition-opacity hover:opacity-85 disabled:cursor-not-allowed disabled:opacity-50;

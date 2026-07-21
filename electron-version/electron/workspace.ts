@@ -6,7 +6,7 @@
 // output limits live here. Neither the renderer nor the ACP adapter gets
 // unrestricted filesystem access through this module.
 
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import * as fs from "node:fs/promises";
 import * as fsSync from "node:fs";
@@ -271,4 +271,101 @@ export function parseWorktreeList(output: string, currentRoot: string): Workspac
     });
   }
   return result;
+}
+
+export interface WorkspaceDirEntry {
+  name: string;
+  isDir: boolean;
+  size: number;
+  path: string;
+}
+
+const MAX_DIR_ENTRIES = 1000;
+const SKIP_ENTRY_NAMES = new Set([
+  ".git", "node_modules", "target", "dist", "out", "release", "build",
+  ".next", ".turbo", ".cache", "coverage", "__pycache__", ".venv", ".DS_Store",
+]);
+
+// Honour .gitignore via `git check-ignore --stdin`, mirroring the Rust side.
+// Outside a Git repo (or if git is missing) this resolves to an empty set, so
+// the SKIP_ENTRY_NAMES list above is the only filter — same fallback as Rust.
+async function gitIgnoredNames(root: string, names: string[]): Promise<Set<string>> {
+  const ignored = new Set<string>();
+  if (names.length === 0) return ignored;
+  // The async child_process APIs have no `input` option (only the *Sync
+  // variants do), so pipe the candidate list into stdin by hand.
+  return new Promise<Set<string>>((resolve) => {
+    let child: ReturnType<typeof spawn>;
+    try {
+      child = spawn("git", ["check-ignore", "--stdin"], {
+        cwd: root,
+        stdio: ["pipe", "pipe", "ignore"],
+      });
+    } catch {
+      resolve(ignored);
+      return;
+    }
+    let stdout = "";
+    child.stdout?.setEncoding("utf8");
+    child.stdout?.on("data", (chunk: string) => {
+      stdout += chunk;
+    });
+    child.on("error", () => resolve(ignored));
+    child.on("close", () => {
+      for (const line of stdout.split("\n")) {
+        const base = path.basename(line);
+        if (base) ignored.add(base);
+      }
+      resolve(ignored);
+    });
+    // git may exit before we finish writing (e.g. empty repo); ignore EPIPE.
+    child.stdin?.on("error", () => undefined);
+    child.stdin?.end(names.join("\n") + "\n");
+  });
+}
+
+// One level only — the renderer expands directories on demand, so a deep
+// workspace never gets enumerated all at once.
+export async function listDir(workspace: string, relativeDir: string): Promise<WorkspaceDirEntry[]> {
+  const root = await canonicalRoot(workspace);
+  const trimmed = relativeDir.trim();
+  let dir: string;
+  if (trimmed === "" || trimmed === ".") {
+    dir = root;
+  } else {
+    const resolved = await resolveWorkspacePath(root, trimmed);
+    const st = await fs.stat(resolved);
+    if (!st.isDirectory()) throw new Error("not a directory");
+    dir = resolved;
+  }
+
+  let dirents: fsSync.Dirent[];
+  try {
+    dirents = await fs.readdir(dir, { withFileTypes: true });
+  } catch (error) {
+    throw new Error(`cannot read directory ${dir}: ${error}`);
+  }
+  dirents.sort((a, b) => a.name.localeCompare(b.name));
+
+  const ignored = await gitIgnoredNames(root, dirents.map((d) => d.name));
+
+  const out: WorkspaceDirEntry[] = [];
+  for (const entry of dirents) {
+    if (out.length >= MAX_DIR_ENTRIES) break;
+    if (SKIP_ENTRY_NAMES.has(entry.name) || ignored.has(entry.name)) continue;
+    const isDir = entry.isDirectory();
+    const full = path.join(dir, entry.name);
+    let size = 0;
+    if (!isDir) {
+      try {
+        size = (await fs.stat(full)).size;
+      } catch {
+        size = 0;
+      }
+    }
+    out.push({ name: entry.name, isDir, size, path: path.relative(root, full) });
+  }
+  // Directories first, then alphabetical — matches the Rust ordering.
+  out.sort((a, b) => (b.isDir ? 1 : 0) - (a.isDir ? 1 : 0) || a.name.localeCompare(b.name));
+  return out;
 }

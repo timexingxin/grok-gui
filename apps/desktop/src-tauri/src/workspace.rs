@@ -7,13 +7,42 @@
 
 use anyhow::{anyhow, Context, Result};
 use serde::Serialize;
+use std::collections::HashSet;
 use std::fs;
+use std::io::{BufRead, BufReader, Read, Write};
 use std::path::{Component, Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 const MAX_FILES: usize = 240;
 const MAX_FILE_BYTES: u64 = 512 * 1024;
 const MAX_DEPTH: usize = 4;
+
+/// Directory/content-search entry points below stay off the git index for
+/// speed and to bound worst-case cost on huge or non-Git projects.
+const MAX_DIR_ENTRIES: usize = 1000;
+const MAX_SEARCH_FILE_BYTES: u64 = 1024 * 1024;
+const MAX_SEARCH_CANDIDATES: usize = 20_000;
+const MAX_SEARCH_RESULTS: usize = 500;
+
+/// Directory names that never belong in a lazy file tree or a content
+/// search, whether or not the project is a Git repository (`.gitignore`
+/// coverage is best-effort and this list is the hard floor beneath it).
+const SKIP_ENTRY_NAMES: &[&str] = &[
+    ".git",
+    "node_modules",
+    "target",
+    "dist",
+    "out",
+    "release",
+    "build",
+    ".next",
+    ".turbo",
+    ".cache",
+    "coverage",
+    "__pycache__",
+    ".venv",
+    ".DS_Store",
+];
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -57,6 +86,23 @@ pub struct WorkspaceFile {
 pub struct WorkspaceText {
     pub path: String,
     pub content: String,
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceDirEntry {
+    pub name: String,
+    pub is_dir: bool,
+    pub size: u64,
+    pub path: String,
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WorkspaceSearchMatch {
+    pub path: String,
+    pub line: usize,
+    pub text: String,
 }
 
 pub fn overview(workspace: &str) -> Result<WorkspaceOverview> {
@@ -109,6 +155,236 @@ pub fn diff(workspace: &str, relative_path: &str) -> Result<WorkspaceText> {
         path: relative_path.to_string(),
         content: String::from_utf8_lossy(&output.stdout).to_string(),
     })
+}
+
+/// List a single directory level for the lazy file tree. Unlike `overview`'s
+/// `collect_files`, this never recurses: callers expand one level at a time
+/// as the user opens folders, so a huge monorepo never pays for a full walk.
+pub fn list_dir(workspace: &str, relative_dir: &str) -> Result<Vec<WorkspaceDirEntry>> {
+    let root = canonical_root(workspace)?;
+    let dir = if relative_dir.trim().is_empty() || relative_dir == "." {
+        root.clone()
+    } else {
+        let resolved = resolve_workspace_path(&root, relative_dir)?;
+        if !resolved.is_dir() {
+            return Err(anyhow!("not a directory"));
+        }
+        resolved
+    };
+
+    let read_dir =
+        fs::read_dir(&dir).with_context(|| format!("cannot read directory {}", dir.display()))?;
+    let mut entries: Vec<_> = read_dir.filter_map(|entry| entry.ok()).collect();
+    entries.sort_by_key(|entry| entry.file_name());
+
+    let ignored = git_ignored_names(&root, &entries);
+
+    let mut out = Vec::new();
+    for entry in entries {
+        if out.len() >= MAX_DIR_ENTRIES {
+            break;
+        }
+        let name = entry.file_name().to_string_lossy().to_string();
+        if SKIP_ENTRY_NAMES.contains(&name.as_str()) || ignored.contains(&name) {
+            continue;
+        }
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        let is_dir = file_type.is_dir();
+        let path = entry.path();
+        let size = if is_dir {
+            0
+        } else {
+            fs::metadata(&path).map(|m| m.len()).unwrap_or(0)
+        };
+        let relative = path
+            .strip_prefix(&root)
+            .unwrap_or(&path)
+            .to_string_lossy()
+            .to_string();
+        out.push(WorkspaceDirEntry {
+            name,
+            is_dir,
+            size,
+            path: relative,
+        });
+    }
+    out.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then_with(|| a.name.cmp(&b.name)));
+    Ok(out)
+}
+
+/// Ask Git which of `entries` (all direct children of the same directory)
+/// are ignored, in one `check-ignore --stdin` round trip. Best-effort: a
+/// non-Git workspace or a failed spawn simply yields no matches, so lazy
+/// listing degrades to the hard-coded skip list instead of failing outright.
+fn git_ignored_names(root: &Path, entries: &[fs::DirEntry]) -> HashSet<String> {
+    let mut ignored = HashSet::new();
+    if entries.is_empty() {
+        return ignored;
+    }
+    let mut stdin_payload = String::new();
+    for entry in entries {
+        let path = entry.path();
+        let relative = path.strip_prefix(root).unwrap_or(&path);
+        stdin_payload.push_str(&relative.to_string_lossy());
+        stdin_payload.push('\n');
+    }
+    let Ok(mut child) = Command::new("git")
+        .args(["check-ignore", "--stdin"])
+        .current_dir(root)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+    else {
+        return ignored;
+    };
+    if let Some(mut stdin) = child.stdin.take() {
+        let _ = stdin.write_all(stdin_payload.as_bytes());
+    }
+    let Ok(output) = child.wait_with_output() else {
+        return ignored;
+    };
+    for line in String::from_utf8_lossy(&output.stdout).lines() {
+        if let Some(name) = Path::new(line).file_name().and_then(|n| n.to_str()) {
+            ignored.insert(name.to_string());
+        }
+    }
+    ignored
+}
+
+/// Search text file contents across the workspace. Files come from `git
+/// ls-files` (tracked + untracked-but-not-ignored) when the workspace is a
+/// Git repository, which is how `.gitignore` coverage is honoured without a
+/// dedicated ignore-file parser; a bounded manual walk is the fallback for
+/// non-Git directories. Matching reads each candidate file line-by-line
+/// through a `BufReader` rather than loading it whole, and both the
+/// candidate count and match count are capped so a huge repo or a very
+/// common query can't turn this into an unbounded scan.
+pub fn search_content(workspace: &str, query: &str, max_results: usize) -> Result<Vec<WorkspaceSearchMatch>> {
+    let root = canonical_root(workspace)?;
+    let query = query.trim();
+    if query.is_empty() {
+        return Ok(Vec::new());
+    }
+    let max_results = max_results.clamp(1, MAX_SEARCH_RESULTS);
+    let needle = query.to_lowercase();
+
+    let mut matches = Vec::new();
+    for relative in search_candidates(&root) {
+        if matches.len() >= max_results {
+            break;
+        }
+        if should_skip_search_path(&relative) {
+            continue;
+        }
+        let path = root.join(&relative);
+        let Ok(metadata) = fs::metadata(&path) else {
+            continue;
+        };
+        if !metadata.is_file() || metadata.len() > MAX_SEARCH_FILE_BYTES {
+            continue;
+        }
+        if is_probably_binary(&path) {
+            continue;
+        }
+        let Ok(file) = fs::File::open(&path) else {
+            continue;
+        };
+        for (index, line) in BufReader::new(file).lines().enumerate() {
+            let Ok(line) = line else { break };
+            if line.to_lowercase().contains(&needle) {
+                let mut text = line;
+                if text.len() > 300 {
+                    text.truncate(300);
+                }
+                matches.push(WorkspaceSearchMatch {
+                    path: relative.clone(),
+                    line: index + 1,
+                    text,
+                });
+                if matches.len() >= max_results {
+                    break;
+                }
+            }
+        }
+    }
+    Ok(matches)
+}
+
+fn is_probably_binary(path: &Path) -> bool {
+    let Ok(mut file) = fs::File::open(path) else {
+        return true;
+    };
+    let mut head = [0u8; 4096];
+    let Ok(read) = file.read(&mut head) else {
+        return true;
+    };
+    head[..read].contains(&0)
+}
+
+fn should_skip_search_path(relative: &str) -> bool {
+    Path::new(relative).components().any(|component| {
+        matches!(component, Component::Normal(name) if SKIP_ENTRY_NAMES.contains(&name.to_string_lossy().as_ref()))
+    })
+}
+
+/// Relative file paths to search, respecting `.gitignore` via `git
+/// ls-files` when available. Falls back to a bounded manual walk (still
+/// skipping `SKIP_ENTRY_NAMES`) so non-Git workspaces stay searchable.
+fn search_candidates(root: &Path) -> Vec<String> {
+    if let Ok(output) = Command::new("git")
+        .args(["ls-files", "--cached", "--others", "--exclude-standard", "-z"])
+        .current_dir(root)
+        .output()
+    {
+        if output.status.success() {
+            return String::from_utf8_lossy(&output.stdout)
+                .split('\0')
+                .filter(|entry| !entry.is_empty())
+                .map(str::to_string)
+                .collect();
+        }
+    }
+    let mut out = Vec::new();
+    let _ = walk_search_candidates(root, root, &mut out);
+    out
+}
+
+fn walk_search_candidates(root: &Path, dir: &Path, out: &mut Vec<String>) -> Result<()> {
+    if out.len() >= MAX_SEARCH_CANDIDATES {
+        return Ok(());
+    }
+    let Ok(read_dir) = fs::read_dir(dir) else {
+        return Ok(());
+    };
+    let mut entries: Vec<_> = read_dir.filter_map(|entry| entry.ok()).collect();
+    entries.sort_by_key(|entry| entry.file_name());
+    for entry in entries {
+        if out.len() >= MAX_SEARCH_CANDIDATES {
+            break;
+        }
+        let name = entry.file_name().to_string_lossy().to_string();
+        if SKIP_ENTRY_NAMES.contains(&name.as_str()) {
+            continue;
+        }
+        let path = entry.path();
+        let Ok(file_type) = entry.file_type() else {
+            continue;
+        };
+        if file_type.is_dir() {
+            walk_search_candidates(root, &path, out)?;
+        } else if file_type.is_file() {
+            let relative = path
+                .strip_prefix(root)
+                .unwrap_or(&path)
+                .to_string_lossy()
+                .to_string();
+            out.push(relative);
+        }
+    }
+    Ok(())
 }
 
 /// Resolve an ACP filesystem path inside `root`, including files which do not
@@ -438,5 +714,81 @@ mod tests {
         let _ = fs::remove_dir_all(&root);
         let _ = fs::remove_dir_all(&checkout);
         result.expect("real worktree should be represented in workspace overview");
+    }
+
+    fn temp_repo(name: &str) -> PathBuf {
+        let root = std::env::temp_dir().join(format!("grok-gui-{}-{}", name, uuid::Uuid::new_v4()));
+        fs::create_dir_all(&root).expect("temporary repository directory");
+        git_ok(&root, &["init", "--initial-branch", "main"]);
+        git_ok(&root, &["config", "user.email", "grok-gui-test@example.invalid"]);
+        git_ok(&root, &["config", "user.name", "Grok GUI test"]);
+        root
+    }
+
+    #[test]
+    fn list_dir_hides_gitignored_and_hard_coded_skip_entries() {
+        let root = temp_repo("list-dir");
+        let result = (|| -> Result<()> {
+            fs::write(root.join(".gitignore"), "ignored.txt\n")?;
+            fs::write(root.join("ignored.txt"), "should not show up")?;
+            fs::write(root.join("kept.txt"), "kept")?;
+            fs::create_dir_all(root.join("node_modules"))?;
+            fs::create_dir_all(root.join("src"))?;
+            fs::write(root.join("src/lib.rs"), "fn main() {}")?;
+
+            let entries = list_dir(root.to_str().expect("UTF-8 path"), "")?;
+            let names: Vec<&str> = entries.iter().map(|entry| entry.name.as_str()).collect();
+            assert!(names.contains(&"kept.txt"));
+            assert!(names.contains(&"src"));
+            assert!(names.contains(&".gitignore"));
+            assert!(!names.contains(&"ignored.txt"), "gitignored file leaked: {:?}", names);
+            assert!(!names.contains(&"node_modules"), "hard-coded skip name leaked: {:?}", names);
+            assert!(entries.iter().find(|e| e.name == "src").expect("src entry").is_dir);
+
+            let nested = list_dir(root.to_str().expect("UTF-8 path"), "src")?;
+            assert_eq!(nested.len(), 1);
+            assert_eq!(nested[0].name, "lib.rs");
+            assert_eq!(nested[0].path, "src/lib.rs");
+            Ok(())
+        })();
+        let _ = fs::remove_dir_all(&root);
+        result.expect("list_dir should list one level while respecting ignore rules");
+    }
+
+    #[test]
+    fn list_dir_rejects_traversal_outside_the_workspace() {
+        let root = temp_repo("list-dir-traversal");
+        let outcome = list_dir(root.to_str().expect("UTF-8 path"), "../etc");
+        let _ = fs::remove_dir_all(&root);
+        assert!(outcome.is_err());
+    }
+
+    #[test]
+    fn search_content_matches_text_files_and_skips_binaries_and_ignored_paths() {
+        let root = temp_repo("search-content");
+        let result = (|| -> Result<()> {
+            fs::write(root.join(".gitignore"), "ignored-dir/\n")?;
+            fs::write(root.join("needle.txt"), "line one\nfind the NEEDLE here\nline three\n")?;
+            fs::create_dir_all(root.join("ignored-dir"))?;
+            fs::write(root.join("ignored-dir/needle.txt"), "needle in an ignored dir")?;
+            fs::write(root.join("binary.dat"), [b'n', b'e', b'e', b'd', b'l', b'e', 0u8, 1u8, 2u8])?;
+
+            let matches = search_content(root.to_str().expect("UTF-8 path"), "needle", 50)?;
+            assert_eq!(matches.len(), 1, "expected exactly one match, got {:?}", matches);
+            assert_eq!(matches[0].path, "needle.txt");
+            assert_eq!(matches[0].line, 2);
+            assert!(matches[0].text.to_lowercase().contains("needle"));
+            Ok(())
+        })();
+        let _ = fs::remove_dir_all(&root);
+        result.expect("search_content should find matches while skipping binaries and ignored paths");
+    }
+
+    #[test]
+    fn search_content_returns_nothing_for_a_blank_query() {
+        let root = temp_repo("search-content-blank");
+        let outcome = search_content(root.to_str().expect("UTF-8 path"), "   ", 10);
+        let _ = fs::remove_dir_all(&root);
+        assert_eq!(outcome.expect("blank query should not error"), Vec::new());
     }
 }

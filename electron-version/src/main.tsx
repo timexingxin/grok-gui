@@ -8,6 +8,12 @@ import type {} from "./electron.d.ts";
 // to the Electron bridge preload.ts exposes so those checks keep working.
 if (typeof window !== "undefined" && window.electron) {
   window.__TAURI_INTERNALS__ = window.electron;
+  // Draggable title-bar strip (CSS) is darwin-only. Windows keeps its native
+  // title bar with the TopBar flush at the webview top, where a strip would
+  // overlap the TopBar buttons.
+  if (window.electron.platform === "darwin") {
+    document.documentElement.classList.add("drag-titlebar");
+  }
 }
 
 // Note: we intentionally do NOT wrap in <React.StrictMode>. StrictMode

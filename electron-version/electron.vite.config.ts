@@ -22,7 +22,15 @@ export default defineConfig({
   main: {
     build: {
       outDir: "out/main",
-      lib: { entry: resolve(__dirname, "electron/main.ts") },
+      // Two entries: the app main process, plus the content-search worker that
+      // commands.ts spawns via `new Worker(path.join(__dirname, "search-worker.js"))`.
+      // Both land in out/main so the __dirname-relative worker path resolves.
+      lib: {
+        entry: {
+          main: resolve(__dirname, "electron/main.ts"),
+          "search-worker": resolve(__dirname, "electron/search-worker.ts"),
+        },
+      },
       rollupOptions: { external: ["electron", "electron-updater"] },
     },
     plugins: [externalizeDepsPlugin()],

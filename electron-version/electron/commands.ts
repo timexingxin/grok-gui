@@ -14,6 +14,7 @@ import * as fs from "node:fs/promises";
 import * as fsSync from "node:fs";
 import * as path from "node:path";
 import * as crypto from "node:crypto";
+import { Worker } from "node:worker_threads";
 
 import {
   resolveGrokBin,
@@ -27,6 +28,7 @@ import { saveApiKey, getAuthMode } from "./auth";
 import { GrokRuntime, type GrokEvent, type SessionOptions } from "./grok-runtime";
 import { SessionPool, MAX_RUNTIMES, nextSpawnHint } from "./session-pool";
 import * as workspace from "./workspace";
+import type { SearchMatch } from "./search-worker";
 
 const execFileAsync = promisify(execFile);
 const APP_VERSION = "0.1.0";
@@ -70,10 +72,16 @@ export function isPreviewableImage(filePath: string): boolean {
 // ---------------------------------------------------------------------------
 
 async function installOfficialGrokCli(): Promise<void> {
+  // The official installer is a Unix shell script; there is no Windows
+  // equivalent, so `irm … | iex` would just feed bash syntax to PowerShell and
+  // fail. On Windows the onboarding screen already hides the Install button and
+  // shows a manual `cargo install` command, so reaching here means something
+  // invoked it anyway — refuse clearly instead of spawning a doomed process.
+  if (process.platform === "win32") {
+    throw new Error("Windows 不支持一键安装，请在终端手动运行 onboarding 显示的命令。");
+  }
   await new Promise<void>((resolve, reject) => {
-    const child = process.platform === "win32"
-      ? spawn("powershell", ["-NoProfile", "-Command", `irm ${OFFICIAL_INSTALLER_SCRIPT} | iex`], { stdio: ["ignore", "pipe", "pipe"] })
-      : spawn("/bin/zsh", ["-lc", OFFICIAL_INSTALLER_SCRIPT], { stdio: ["ignore", "pipe", "pipe"] });
+    const child = spawn("/bin/zsh", ["-lc", OFFICIAL_INSTALLER_SCRIPT], { stdio: ["ignore", "pipe", "pipe"] });
     child.on("error", () => reject(new Error("无法启动官方 Grok Build 安装器。")));
     child.on("exit", (code) => {
       if (code === 0) resolve();
@@ -317,6 +325,35 @@ export async function saveClipboardImage(args: { workspacePath?: string; filenam
   return target;
 }
 
+/**
+ * Runs a content search on a `worker_threads` Worker instead of inline in
+ * the main process. `search-worker.ts`'s scan reads every candidate file
+ * synchronously (from the worker's point of view); doing that on the main
+ * thread would stall every window's IPC for the duration of the scan.
+ *
+ * The worker is loaded from `search-worker.js` next to the bundled main
+ * entry (mirroring how `main.ts` locates `preload.js`), so shipping this
+ * requires `electron.vite.config.ts`'s main build to emit `search-worker.ts`
+ * as its own entry alongside `main.ts` — that config file is out of scope
+ * for this change and needs a follow-up edit before packaging.
+ */
+async function runWorkspaceSearch(workspacePath: string, query: string, maxResults: number): Promise<SearchMatch[]> {
+  return new Promise((resolve, reject) => {
+    const worker = new Worker(path.join(__dirname, "search-worker.js"), {
+      workerData: { workspace: workspacePath, query, maxResults },
+    });
+    worker.once("message", (message: { ok: boolean; matches?: SearchMatch[]; error?: string }) => {
+      void worker.terminate();
+      if (message.ok) resolve(message.matches ?? []);
+      else reject(new Error(message.error ?? "workspace search failed"));
+    });
+    worker.once("error", (error) => {
+      void worker.terminate();
+      reject(error);
+    });
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Registration
 // ---------------------------------------------------------------------------
@@ -486,6 +523,18 @@ export function registerCommands(deps: CommandDeps): void {
 
   ipcMain.handle("workspace_diff", async (_event, args: { workspacePath: string; relativePath: string }) =>
     workspace.diff(expandTilde(args.workspacePath), args.relativePath),
+  );
+
+  ipcMain.handle(
+    "workspace_list_dir",
+    async (_event, args: { workspacePath: string; relativeDir: string }) =>
+      workspace.listDir(expandTilde(args.workspacePath), args.relativeDir),
+  );
+
+  ipcMain.handle(
+    "workspace_search",
+    async (_event, args: { workspacePath: string; query: string; maxResults: number }) =>
+      runWorkspaceSearch(expandTilde(args.workspacePath), args.query, args.maxResults),
   );
 
   ipcMain.handle("save_clipboard_image", async (_event, args: { workspacePath?: string; filename: string; base64: string }) =>

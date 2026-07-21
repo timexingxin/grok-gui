@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -17,6 +17,13 @@ import { ImageLightbox } from "./ImageLightbox";
 import { t } from "./i18n";
 import appIconUrl from "./assets/grok-gui-cover.png";
 
+// Render at most this many messages at once; older ones load on demand. A
+// streaming turn only ever touches the tail, so the windowed view never hides
+// live output, and very long histories no longer render hundreds of (markdown-
+// heavy) rows at once.
+const MESSAGE_WINDOW = 100;
+const MESSAGE_STEP = 60;
+
 export function ChatArea() {
   const messages = useAppStore((s) => s.messages);
   const streaming = useAppStore((s) => s.streaming);
@@ -25,9 +32,15 @@ export function ChatArea() {
   const language = useAppStore((s) => s.settings.language);
   const scrollRef = useRef<HTMLDivElement>(null);
   const followStreamRef = useRef(true);
+  // Height snapshot taken right before expanding older messages, used to keep
+  // the previously-top message pinned so the viewport doesn't jump.
+  const prevHeightRef = useRef<number | null>(null);
+  const [visibleCount, setVisibleCount] = useState(MESSAGE_WINDOW);
+  const local = (zh: string, en: string) => (language === "en-US" ? en : zh);
 
   useEffect(() => {
     followStreamRef.current = true;
+    setVisibleCount(MESSAGE_WINDOW);
   }, [activeConversationId]);
 
   useEffect(() => {
@@ -35,6 +48,14 @@ export function ChatArea() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages.length, streaming]);
+
+  useEffect(() => {
+    if (prevHeightRef.current != null && scrollRef.current) {
+      const el = scrollRef.current;
+      el.scrollTop = el.scrollHeight - prevHeightRef.current;
+      prevHeightRef.current = null;
+    }
+  }, [visibleCount]);
 
   const onScroll = () => {
     const el = scrollRef.current;
@@ -45,6 +66,14 @@ export function ChatArea() {
   if (messages.length === 0 && !streaming) {
     return <EmptyState />;
   }
+
+  const hiddenCount = Math.max(0, messages.length - visibleCount);
+  const visibleMessages = hiddenCount > 0 ? messages.slice(-visibleCount) : messages;
+  const loadMore = () => {
+    const el = scrollRef.current;
+    if (el) prevHeightRef.current = el.scrollHeight;
+    setVisibleCount((c) => c + MESSAGE_STEP);
+  };
 
   return (
     <div
@@ -63,8 +92,17 @@ export function ChatArea() {
             {t(language, "restoreAgent")}
           </p>
         )}
-        {messages.map((m) => (
-          <MessageRow key={m.id} message={m} />
+        {hiddenCount > 0 && (
+          <button
+            type="button"
+            onClick={loadMore}
+            className="-mb-2 self-center rounded-full border border-border bg-card px-3 py-1 text-[11px] text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
+          >
+            {local(`加载更早的 ${hiddenCount} 条消息`, `Load ${hiddenCount} earlier messages`)}
+          </button>
+        )}
+        {visibleMessages.map((m) => (
+          <MemoizedMessageRow key={m.id} message={m} />
         ))}
         {streaming && <StreamingBubble />}
         <div className="h-4" />
@@ -531,3 +569,9 @@ function ThoughtBlock({ thought, live = false }: { thought: ThoughtRecord; live?
     </details>
   );
 }
+
+// Memoized so a streaming delta (which only mutates the separate `streaming`
+// state, not the `messages` array) does not re-render every completed row.
+// Combined with the 50ms store-side flush, this is what stops per-character
+// React renders during a turn.
+const MemoizedMessageRow = memo(MessageRow);

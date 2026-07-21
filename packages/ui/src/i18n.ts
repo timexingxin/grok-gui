@@ -123,6 +123,15 @@ const zhCN = {
   totalTokens: "总 Token",
   cost: "费用",
   activeDays: "活跃天数",
+  filterFiles: "按文件名过滤…",
+  searchContent: "搜索文件内容…",
+  searching: "搜索中…",
+  noSearchResults: "没有匹配结果",
+  loadingFiles: "加载中…",
+  contentMatches: "内容匹配",
+  loadLargeDiff: "较大的差异",
+  loadLargeDiffDetail: "点击加载差异",
+  lines: "行",
 } as const;
 
 const enUS: Record<keyof typeof zhCN, string> = {
@@ -248,6 +257,15 @@ const enUS: Record<keyof typeof zhCN, string> = {
   totalTokens: "Total tokens",
   cost: "Cost",
   activeDays: "Active days",
+  filterFiles: "Filter by filename…",
+  searchContent: "Search file contents…",
+  searching: "Searching…",
+  noSearchResults: "No matching results",
+  loadingFiles: "Loading…",
+  contentMatches: "Content matches",
+  loadLargeDiff: "Large diff",
+  loadLargeDiffDetail: "Click to load the diff",
+  lines: "lines",
 };
 
 export const dictionaries = { zhCN, enUS };
