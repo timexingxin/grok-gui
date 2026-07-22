@@ -25,6 +25,18 @@ const { execSync } = require("node:child_process");
 const path = require("node:path");
 
 exports.default = async function afterSign(context) {
+  // electron-builder invokes this hook on every target platform. The macOS
+  // re-sign only makes sense on darwin — `codesign` is a macOS-only tool
+  // and trying to run it on win32/linux fails the build before the rest of
+  // the packaging pipeline gets a chance to run.
+  if (process.platform !== "darwin") {
+    console.log(
+      `[afterSign] Skipping macOS re-sign on ${process.platform}; ` +
+        "the placeholder Electron signature only matters to Gatekeeper."
+    );
+    return;
+  }
+
   // electron-builder 26.x: both context.appOutDir and context.packager.appOutDir
   // are set. Use whichever is present for forward/backward compat.
   const appOutDir =

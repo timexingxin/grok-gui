@@ -150,9 +150,17 @@ jobs:
         with:
           workspaces: apps/desktop/src-tauri -> target
       - run: npm ci
-      - name: Build Tauri MSI + NSIS
+      - name: Build Tauri NSIS installer
         working-directory: apps/desktop
-        run: npm run tauri build
+        # `--bundles nsis` skips the MSI target. MSI uses WiX 3.14's
+        # light.exe which fails on github-actions windows-latest with
+        # `failed to run ...\WixTools314\light.exe` — a known issue
+        # with WiX 3.14's .NET dependency on that image. NSIS uses
+        # makensis (bundled with the Tauri CLI) and runs reliably.
+        # The MSI upload step below stays in case future Tauri
+        # versions fix WiX 3.14 compat; `if-no-files-found: ignore`
+        # keeps the build green when the pattern matches nothing.
+        run: npm run tauri build -- --bundles nsis
       - name: Upload Windows installers
         uses: actions/upload-artifact@v4
         with:
