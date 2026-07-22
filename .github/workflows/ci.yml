@@ -135,5 +135,58 @@ jobs:
           name: grok-gui-electron-macos
           path: electron-version/release/*.dmg
 
+  rust-build-windows:
+    name: Tauri bundle (Windows)
+    runs-on: windows-latest
+    needs: [frontend, rust-lint]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri -> target
+      - run: npm ci
+      - name: Build Tauri MSI + NSIS
+        working-directory: apps/desktop
+        run: npm run tauri build
+      - name: Upload Windows installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: grok-gui-windows
+          path: apps/desktop/src-tauri/target/release/bundle/msi/*.msi
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: grok-gui-windows
+          path: apps/desktop/src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: ignore
+
+  electron-build-windows:
+    name: Electron bundle (Windows)
+    runs-on: windows-latest
+    needs: [frontend]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: electron-version/package-lock.json
+      - name: Install Electron deps
+        working-directory: electron-version
+        run: npm ci
+      - name: Build Electron app + NSIS installer
+        working-directory: electron-version
+        run: npm run dist -- --publish never --win
+      - name: Upload NSIS installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: grok-gui-electron-windows
+          path: electron-version/release/*.exe
+
   # Tauri bundle on Linux requires a long list of apt packages; we
   # keep the test+clippy matrix above and skip the build for now.
