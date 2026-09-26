@@ -14,7 +14,7 @@
 
 | Platform | Command / Download |
 |---|---|
-| **macOS / Linux (Homebrew)** | `brew install --cask timexingxin/grok-gui/grok-gui-lite` |
+| **macOS (Homebrew Cask)** | `brew install --cask timexingxin/grok-gui/grok-gui-lite` |
 | **macOS (DMG, drag-install)** | Download `Grok-GUI-Lite-0.1.0-{Apple-Silicon,Intel}.dmg` or `Grok-GUI-0.1.0-Electron-{Apple-Silicon,Intel}.dmg` from [releases](https://github.com/timexingxin/grok-gui/releases/latest) |
 | **Windows (Build from source)** | Verified buildable via `npm run tauri:build` (Standalone `.exe` release asset upload pending) |
 | **From source (dev)** | `npm install && npm run tauri:dev` (Node 20+, Rust 1.77+) |
@@ -106,15 +106,21 @@ grok-gui/
 
 ## Known limitations
 
-- **Ad-hoc signing on macOS.** DMGs are signed with an ad-hoc (`-`) identity (Apple Developer ID notarization is pending).
-  - **macOS 14 (Sonoma) and earlier**: Gatekeeper displays an "unidentified developer" prompt. Right-click the app in Finder → choose **Open** → click **Open** to bypass.
-  - **macOS 15 (Sequoia)**: Apple applies stricter quarantine enforcement that may report the app as "damaged". Run the included `First-Run-Open-Me.command` helper from the DMG, or clear quarantine via Terminal:
-    ```bash
-    xattr -cr "/Applications/Grok GUI.app"
-    ```
+- **Ad-hoc signing & macOS Gatekeeper Hierarchy**:
+  DMGs are signed with an ad-hoc (`-`) identity (Apple Developer ID notarization is pending). To open safely, follow this 4-step verification hierarchy:
+  1. **Verify Checksum**: Compare the SHA-256 hash of your downloaded DMG against `SHA256SUMS.txt` published on the GitHub Release page:
+     ```bash
+     shasum -a 256 "Grok-GUI-Lite-0.1.0-Apple-Silicon.dmg"
+     ```
+  2. **Finder Right-Click Open**: In Finder, right-click (or Control-click) `Grok GUI Lite.app` in `/Applications` → choose **Open** → click **Open** in the Gatekeeper dialog.
+  3. **System Settings Open Anyway**: If Gatekeeper blocks opening, navigate to **System Settings > Privacy & Security**, scroll down to the Security section, and click **Open Anyway**.
+  4. **Terminal xattr fallback (only if needed)**: On macOS 15 Sequoia or if quarantine flag persists:
+     ```bash
+     xattr -cr "/Applications/Grok GUI Lite.app"
+     ```
 - **Windows Binary Release Assets**: While Windows NSIS installer compilation is verified in CI, standalone `.exe` release assets are pending upload to GitHub releases. Windows users can run and build from source via `npm run tauri:build`.
 - **xAI upstream PR policy**: Upstream `grok-build` does not accept external pull requests. This desktop repository provides an open, community-driven interface layer.
-- **Upstream data-handling considerations**: `grok-build` handles telemetry according to xAI's policies. This GUI shell spawns the local process and communicates strictly over stdio (JSON-RPC 2.0); **we introduce zero third-party telemetry, tracking, or proxy network calls.** Users may audit `crates/runtime/` in upstream `grok-build` for details on upstream telemetry.
+- **Telemetry & Data Governance**: This repository does not intentionally add its own analytics or telemetry service. Network activity performed by Grok Build and configured model providers remains governed by those upstream services. Users may audit `crates/runtime/` in upstream `grok-build` for details on upstream data handling.
 
 ## Contributing
 

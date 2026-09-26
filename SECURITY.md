@@ -48,6 +48,18 @@ Out of scope (file against the upstream instead):
   distribution-time concern, not a code defect. See the README "Known
   limitations" section.
 
+## Known Security Boundaries
+
+### Tauri Asset Protocol Filesystem Scope (`["$HOME/**", "$TEMP/**"]`)
+
+In `apps/desktop/src-tauri/tauri.conf.json`, `assetProtocol.scope.allow` is configured with `["$HOME/**", "$TEMP/**"]`.
+
+- **Design Rationale**: Grok GUI functions as a local coding and writing desktop assistant. Users interactively select, drag, and attach arbitrary workspace files, architectural diagrams, and screenshots located across project folders in their home directory (`$HOME/**`) or temporary directories (`$TEMP/**`). The Tauri asset protocol provides the necessary local media streaming to display thumbnail and image previews in `InputBar` and `ChatArea` via `convertFileSrc`.
+- **Security Mitigations & Confinement**:
+  1. **Read-Only Media Protocol**: The asset protocol strictly serves read-only file streams; it cannot execute scripts, mutate filesystem contents, or delete files.
+  2. **Webview CSP Confinement**: Content Security Policy (`csp`) strictly restricts network connections to local IPC (`connect-src: ipc: http://ipc.localhost`) and prohibits outbound external socket connections from the webview context, preventing local image exfiltration by untrusted prompt text.
+  3. **System Directory Isolation**: Sensitive operating system files (`/etc`, `/var`, `/System`, other user profiles) remain outside the permitted scope.
+
 ## Known data-handling caveat
 
 The wrapped `grok-build` runtime was open-sourced after a security
