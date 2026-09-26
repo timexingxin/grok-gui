@@ -12,11 +12,11 @@
 
 ## Install
 
-| Platform | Command |
+| Platform | Command / Download |
 |---|---|
 | **macOS / Linux (Homebrew)** | `brew install --cask timexingxin/grok-gui/grok-gui-lite` |
-| **macOS (DMG, drag-install)** | Download `Grok GUI Lite-0.1.0-{Apple-Silicon,Intel}.dmg` from [releases](https://github.com/timexingxin/grok-gui/releases/latest) |
-| **Windows (NSIS installer)** | Download `Grok GUI Lite_0.1.0_x64-setup.exe` from [releases](https://github.com/timexingxin/grok-gui/releases/latest) |
+| **macOS (DMG, drag-install)** | Download `Grok-GUI-Lite-0.1.0-{Apple-Silicon,Intel}.dmg` or `Grok-GUI-0.1.0-Electron-{Apple-Silicon,Intel}.dmg` from [releases](https://github.com/timexingxin/grok-gui/releases/latest) |
+| **Windows (Build from source)** | Verified buildable via `npm run tauri:build` (Standalone `.exe` release asset upload pending) |
 | **From source (dev)** | `npm install && npm run tauri:dev` (Node 20+, Rust 1.77+) |
 
 The first launch will offer a one-line installer for the [Grok Build CLI](https://x.ai) if it isn't on `PATH`:
@@ -50,6 +50,8 @@ curl -fsSL https://x.ai/cli/install.sh | bash
 | **Multi-session parallel** | Yes | Per-workspace | No | No | No |
 | **Permission modes (Ask/Plan/Build)** | Yes | Implicit | Yes | No | No |
 | **Underlying agent** | [grok-build](https://github.com/xai-org/grok-build) (xAI's, Rust TUI) | Proprietary | Anthropic's CLI | VS Code LLM protocol | Sourcegraph |
+
+_*(Feature comparison as of mid-2026; subject to upstream updates by respective vendors)*_
 
 ## Architecture
 
@@ -104,9 +106,15 @@ grok-gui/
 
 ## Known limitations
 
-- **Ad-hoc signing on macOS.** DMGs use the `-` identity (no Apple Developer ID yet). First install triggers the Gatekeeper "unidentified developer" prompt — right-click the app → Open to bypass. We're working on either an ad-hoc-signing-aware onboarding script or a real Developer ID.
-- **xAI does not accept external PRs** to `grok-build`. This GUI is the layer where you can iterate freely. If upstream deletes the repo, Apache-2.0 still gives you the right to fork.
-- **Upstream data-handling concerns** have been documented about `grok-build`. The Rust side here only spawns the process with explicit args; **we add no extra network calls.** Audit upstream's `crates/runtime/` before running on real code.
+- **Ad-hoc signing on macOS.** DMGs are signed with an ad-hoc (`-`) identity (Apple Developer ID notarization is pending).
+  - **macOS 14 (Sonoma) and earlier**: Gatekeeper displays an "unidentified developer" prompt. Right-click the app in Finder → choose **Open** → click **Open** to bypass.
+  - **macOS 15 (Sequoia)**: Apple applies stricter quarantine enforcement that may report the app as "damaged". Run the included `First-Run-Open-Me.command` helper from the DMG, or clear quarantine via Terminal:
+    ```bash
+    xattr -cr "/Applications/Grok GUI.app"
+    ```
+- **Windows Binary Release Assets**: While Windows NSIS installer compilation is verified in CI, standalone `.exe` release assets are pending upload to GitHub releases. Windows users can run and build from source via `npm run tauri:build`.
+- **xAI upstream PR policy**: Upstream `grok-build` does not accept external pull requests. This desktop repository provides an open, community-driven interface layer.
+- **Upstream data-handling considerations**: `grok-build` handles telemetry according to xAI's policies. This GUI shell spawns the local process and communicates strictly over stdio (JSON-RPC 2.0); **we introduce zero third-party telemetry, tracking, or proxy network calls.** Users may audit `crates/runtime/` in upstream `grok-build` for details on upstream telemetry.
 
 ## Contributing
 

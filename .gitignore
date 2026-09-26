@@ -1,6 +1,7 @@
 node_modules
 dist
 build
+!electron-version/build/
 target
 .DS_Store
 *.log
@@ -21,6 +22,9 @@ src-tauri/gen
 # Agent / dev-tool scratch state
 .aider*
 .omo/
+.codegraph
+*.tsbuildinfo
+.verification/
 
 # Local development notes that should not ship
 OPENCODE_HANDOFF.md
