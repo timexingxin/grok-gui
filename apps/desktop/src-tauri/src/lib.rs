@@ -1100,8 +1100,8 @@ fn is_previewable_image(path: &Path) -> bool {
     )
 }
 
-/// Grant the asset protocol access to one user-selected image. This keeps the
-/// static scope narrow while allowing previews for images on external volumes.
+/// Grant the asset protocol access to one existing image. Attachment selection
+/// and message preview both call this, so the path is not necessarily user-selected.
 #[tauri::command]
 async fn allow_image_preview(app: tauri::AppHandle, path: String) -> Result<(), String> {
     let requested = expand_tilde(&path);

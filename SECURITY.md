@@ -48,6 +48,14 @@ Out of scope (file against the upstream instead):
   distribution-time concern, not a code defect. See the README "Known
   limitations" section.
 
+## Known Security Boundaries
+
+### Tauri Asset Protocol Filesystem Scope
+
+The static `assetProtocol.scope.allow` list in `apps/desktop/src-tauri/tauri.conf.json` is empty. Image previews call the Rust `allow_image_preview` command, which canonicalizes an existing path, requires a regular file with a supported image extension, and grants the asset protocol access to that exact file. Both user attachments and image paths in agent messages can invoke this command; it does not prove a user selected the file. A model-supplied path to an existing local image can therefore cause that image to be loaded into the webview. This is a remaining trust boundary, especially for images containing private information.
+
+The asset protocol serves files read-only. The webview CSP restricts direct network connections, but it does not eliminate all possible data flows through the Tauri IPC, the Grok Build runtime, or configured providers. The dynamic grant does not grant access to non-image files through the asset protocol; other application file operations have separate permissions and should be reviewed separately.
+
 ## Known data-handling caveat
 
 The wrapped `grok-build` runtime was open-sourced after a security

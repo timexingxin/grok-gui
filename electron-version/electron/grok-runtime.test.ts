@@ -3,7 +3,12 @@
 // translation (notification shapes -> GrokEvent, session id extraction,
 // launch policy args) independently of a live `grok agent stdio` process.
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+// These tests exercise pure ACP translation helpers. Importing the credential
+// module would load Electron's binary in Node test workers, which races a
+// lazy download after clean installs and is unrelated to the behavior here.
+vi.mock("./auth", () => ({ getApiKey: () => null }));
 import {
   availableModelsFromInit,
   contextWindowForModel,
