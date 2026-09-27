@@ -106,19 +106,15 @@ grok-gui/
 
 ## Known limitations
 
-- **Ad-hoc signing & macOS Gatekeeper Hierarchy**:
-  DMGs are signed with an ad-hoc (`-`) identity (Apple Developer ID notarization is pending). To open safely, follow this 4-step verification hierarchy:
-  1. **Verify Checksum**: Compare the SHA-256 hash of your downloaded DMG against `SHA256SUMS.txt` published on the GitHub Release page:
+- **Ad-hoc signing & macOS Gatekeeper**:
+  The macOS bundles use an ad-hoc (`-`) signing identity and are not notarized. Release v0.1.0 does not contain a `SHA256SUMS.txt` asset. GitHub's Release API exposes a SHA-256 `digest` for each asset; compare it with your download before opening:
      ```bash
      shasum -a 256 "Grok-GUI-Lite-0.1.0-Apple-Silicon.dmg"
+     gh api repos/timexingxin/grok-gui/releases/tags/v0.1.0 \
+       --jq '.assets[] | select(.name == "Grok-GUI-Lite-0.1.0-Apple-Silicon.dmg") | .digest'
      ```
-  2. **Finder Right-Click Open**: In Finder, right-click (or Control-click) `Grok GUI Lite.app` in `/Applications` → choose **Open** → click **Open** in the Gatekeeper dialog.
-  3. **System Settings Open Anyway**: If Gatekeeper blocks opening, navigate to **System Settings > Privacy & Security**, scroll down to the Security section, and click **Open Anyway**.
-  4. **Terminal xattr fallback (only if needed)**: On macOS 15 Sequoia or if quarantine flag persists:
-     ```bash
-     xattr -cr "/Applications/Grok GUI Lite.app"
-     ```
-- **Windows Binary Release Assets**: While Windows NSIS installer compilation is verified in CI, standalone `.exe` release assets are pending upload to GitHub releases. Windows users can run and build from source via `npm run tauri:build`.
+  A matching checksum confirms the downloaded bytes match GitHub's listed asset; it does not establish a verified developer identity. If you trust the source, Finder's right-click **Open** or **System Settings → Privacy & Security → Open Anyway** may allow the app to launch. If macOS still blocks it, report the issue rather than clearing quarantine recursively.
+- **Windows Binary Release Assets**: Windows NSIS installer compilation is checked in CI, but no standalone `.exe` is attached to Release v0.1.0. Windows users can build from source with `npm run tauri:build -- --bundles nsis`.
 - **xAI upstream PR policy**: Upstream `grok-build` does not accept external pull requests. This desktop repository provides an open, community-driven interface layer.
 - **Telemetry & Data Governance**: This repository does not intentionally add its own analytics or telemetry service. Network activity performed by Grok Build and configured model providers remains governed by those upstream services. Users may audit `crates/runtime/` in upstream `grok-build` for details on upstream data handling.
 

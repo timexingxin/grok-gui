@@ -50,15 +50,11 @@ Out of scope (file against the upstream instead):
 
 ## Known Security Boundaries
 
-### Tauri Asset Protocol Filesystem Scope (`["$HOME/**", "$TEMP/**"]`)
+### Tauri Asset Protocol Filesystem Scope
 
-In `apps/desktop/src-tauri/tauri.conf.json`, `assetProtocol.scope.allow` is configured with `["$HOME/**", "$TEMP/**"]`.
+The static `assetProtocol.scope.allow` list in `apps/desktop/src-tauri/tauri.conf.json` is empty. Image previews call the Rust `allow_image_preview` command, which canonicalizes an existing path, requires a regular file with a supported image extension, and grants the asset protocol access to that exact file. Both user attachments and image paths in agent messages can invoke this command; it does not prove a user selected the file. A model-supplied path to an existing local image can therefore cause that image to be loaded into the webview. This is a remaining trust boundary, especially for images containing private information.
 
-- **Design Rationale**: Grok GUI functions as a local coding and writing desktop assistant. Users interactively select, drag, and attach arbitrary workspace files, architectural diagrams, and screenshots located across project folders in their home directory (`$HOME/**`) or temporary directories (`$TEMP/**`). The Tauri asset protocol provides the necessary local media streaming to display thumbnail and image previews in `InputBar` and `ChatArea` via `convertFileSrc`.
-- **Security Mitigations & Confinement**:
-  1. **Read-Only Media Protocol**: The asset protocol strictly serves read-only file streams; it cannot execute scripts, mutate filesystem contents, or delete files.
-  2. **Webview CSP Confinement**: Content Security Policy (`csp`) strictly restricts network connections to local IPC (`connect-src: ipc: http://ipc.localhost`) and prohibits outbound external socket connections from the webview context, preventing local image exfiltration by untrusted prompt text.
-  3. **System Directory Isolation**: Sensitive operating system files (`/etc`, `/var`, `/System`, other user profiles) remain outside the permitted scope.
+The asset protocol serves files read-only. The webview CSP restricts direct network connections, but it does not eliminate all possible data flows through the Tauri IPC, the Grok Build runtime, or configured providers. The dynamic grant does not grant access to non-image files through the asset protocol; other application file operations have separate permissions and should be reviewed separately.
 
 ## Known data-handling caveat
 
