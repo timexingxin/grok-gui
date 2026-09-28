@@ -10,8 +10,9 @@ Prerequisites:
 
 - **Node.js 20+**
 - **Rust 1.77+** (`rustup default stable`)
-- **macOS 12+** for `npm run tauri:dev` and `npm run tauri:build`.
-  Linux/Windows builds work in principle but are not exercised by CI yet.
+- **macOS 12+** for local `npm run tauri:dev` and macOS bundles.
+  CI builds Tauri and Electron bundles on macOS and Windows. Linux CI runs
+  Rust tests and Clippy, but does not build a Linux bundle.
 
 Clone and install:
 
@@ -32,7 +33,7 @@ npm install
 | `npm run build` | Production frontend build into `apps/desktop/dist/`. |
 | `cargo test` (in `apps/desktop/src-tauri`) | Rust unit + integration tests. |
 | `cargo clippy -- -D warnings` (in `apps/desktop/src-tauri`) | Lints that must be clean. |
-| `npm run tauri:build` | Full release DMG (and `.app.tar.gz` updater artifact on Linux). |
+| `npm run tauri:build` | Build a Tauri bundle for the current host; bundle format and signing depend on the host and configuration. |
 
 Before opening a PR, all of these must pass locally:
 
@@ -77,13 +78,19 @@ One logical change per commit. Squash fixups before review.
 
 ## Releasing a new version
 
-1. Bump `version` in `apps/desktop/src-tauri/Cargo.toml`,
-   `apps/desktop/src-tauri/tauri.conf.json`, and `package.json` (keep
-   them in lockstep).
-2. Update `CHANGELOG.md` with a short, user-visible summary.
-3. `npm run tauri:build` — verify DMG + codesign + lint + tests all pass.
-4. Tag `vX.Y.Z` and push. The GitHub Actions release workflow attaches
-   the DMG and the updater `.app.tar.gz` + `.sig`.
+1. Keep the versions in `package.json`, `electron-version/package.json`,
+   `apps/desktop/src-tauri/Cargo.toml`, and
+   `apps/desktop/src-tauri/tauri.conf.json` in sync; update the npm lockfiles.
+2. Prepare factual release notes and run the local checks above. Verify the
+   CI run for the exact commit being considered for release.
+3. Check the intended macOS and Windows bundles and their signing state.
+   A passing CI build creates workflow artifacts; it does not publish them
+   as GitHub Release downloads. The current public release has macOS DMGs,
+   but no Windows installer asset.
+4. After deciding which verified artifacts to publish, create the tag and
+   GitHub Release explicitly, upload those artifacts, and record their
+   checksums. This repository currently has no automatic Release workflow.
+   Do not describe a CI artifact as a public download before it is attached.
 
 ## Reporting bugs
 
